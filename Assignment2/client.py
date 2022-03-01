@@ -7,11 +7,12 @@ def main():
 
     # Argument Validation section
     if len(sys.argv) != 3:
-        print("Please enter a port number for the client to bind to, and a host name to send to.")
+        print("Please enter a mutlicast host name to send to and port number for the client to bind to.")
+        print("Client.py <multicast IP> <port>")
         return
 
     if not sys.argv[2].isnumeric():
-        print("Please enter a port number for the server to bind to. No other options are available.")
+        print("Ensure the port number is actually a number")
         return
      
     # Creating the socket

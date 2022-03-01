@@ -142,22 +142,23 @@ def main():
     threadList = []
     threadLock = threading.Lock()
     # Argument Validation section
-    if len(sys.argv) != 2:
-        print("Please enter a port number for the server to bind to. No other options are available.")
+    if len(sys.argv) != 3:
+        print("Please enter a multicast address and port number for the server to bind to.")
+        print("Server.py <multicast IP> <port>")
         return
 
-    if not sys.argv[1].isnumeric():
-        print("Please enter a port number for the server to bind to. No other options are available.")
+    if not sys.argv[2].isnumeric():
+        print("Ensure the port number is actually a number")
         return 
 
     # Server socket section
     serverSocket = socket(AF_INET, SOCK_DGRAM) 
-    serverSocket.bind(("", int(sys.argv[1])))
-    group = inet_aton("235.1.1.1")
+    serverSocket.bind(("", int(sys.argv[2])))
+    group = inet_aton(sys.argv[1])
     mreq = struct.pack('4sL', group, INADDR_ANY)
     serverSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     # Reading data files section
-    print(f"Server connected to port {sys.argv[1]}. Reading data now")
+    print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}. Reading data now")
     days, rooms, times, reservations = readDataFiles()
     print(f"All data read, server is running.")
     quit = False
