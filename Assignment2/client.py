@@ -101,7 +101,8 @@ def main():
                             input("Command failed")
                             continue
                         if message['command'] == "quit":
-                            break
+                            print("Goodbye")
+                            quit()
                         if 'data' in returnResponse:
                             for entry in returnResponse['data']:
                                 print(entry)
