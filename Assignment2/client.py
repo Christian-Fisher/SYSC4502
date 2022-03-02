@@ -17,8 +17,9 @@ def main():
      
     # Creating the socket
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Set the socket to join the multicast group.
     ttl = struct.pack('b', 1)
-    clientSocket.settimeout(20)
+    clientSocket.settimeout(15)
     clientSocket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
     try:
         # Attempting to resolve the name given by the user. If this fails, then the name is unknown
@@ -80,6 +81,9 @@ def main():
         # Send the message to the server
         clientSocket.sendto(jsonMessage.encode("utf-8"), (sys.argv[1], int(sys.argv[2])))
         # Wait to see a response. If it times out the server didnt respond correctly.
+        
+        # The receive is done in a while loop to ensure all server's responses are received. 
+        # Once a response with the correct commandID is received, the other responses from servers are irrelevant so they can be ignored.
         waitingForResponse = True
         while(waitingForResponse):
             try:

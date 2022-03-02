@@ -5,9 +5,11 @@ from socket import *
 import struct
 import random
 import time
-from typing import Tuple, List
+from typing import List
 
 class serverThread (threading.Thread):
+    """A class which handles a server interaction. The state of the server is passed to this class when a request is received.
+    If changes are made, these are written back to the file before the thread the class is running in is done."""
     def __init__(self, days, rooms, times, reservations, message, addr, lock) -> None:
         threading.Thread.__init__(self)
         self.days: List = days
@@ -20,7 +22,7 @@ class serverThread (threading.Thread):
     
     def writeReservationsBack(self, reservations):
         """When the program ends, write the reservations back into reservations.txt"""
-        print("Saving reservations made to reservations.txt")
+        print("     Saving reservations changes to reservations.txt")
         with open('reservations.txt', 'w') as reservationFile:
             for reservation in reservations:
                 reservationFile.write(f"{reservation[0]} {reservation[1]} {reservation[2]}\n")
@@ -42,11 +44,12 @@ class serverThread (threading.Thread):
             self.lock.release()
             return False
         for reservation in self.reservations:
+            print(reservation)
             if room == reservation[0] and time == reservation[1] and day == reservation[2]:
                 self.lock.release()
                 return False
-        self.writeReservationsBack(self.reservations)
         self.reservations.append([room, time, day])
+        self.writeReservationsBack(self.reservations)
         self.lock.release()
         return True
 
@@ -72,6 +75,7 @@ class serverThread (threading.Thread):
         if "command" in self.message and "commandID" in self.message:
             response = {"commandID": self.message["commandID"]}
             data = ""
+            print(f"Handing request {self.message}")
             # Choose a response based on the type of command requested.
             match self.message['command']:
                 case 'days':
@@ -101,6 +105,7 @@ class serverThread (threading.Thread):
             response["success"] = success
             response["data"] = data
             response = json.dumps(response)
+            # Simulating processing time with a random wait between 5 and 10 seconds.
             time.sleep(random.randint(5, 10))
             responseSocket.sendto(response.encode("utf-8"), self.addr)
 
@@ -154,23 +159,20 @@ def main():
     # Server socket section
     serverSocket = socket(AF_INET, SOCK_DGRAM) 
     serverSocket.bind(("", int(sys.argv[2])))
+    # Adding the server to the multicast group
     group = inet_aton(sys.argv[1])
     mreq = struct.pack('4sL', group, INADDR_ANY)
     serverSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     # Reading data files section
-    print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}. Reading data now")
-    days, rooms, times, reservations = readDataFiles()
-    print(f"All data read, server is running.")
-    quit = False
+    print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     # Main loop to wait for client to send.
     i=0
-    while not quit:
+    while True:
         i+=1
         # Wait to receive a command
         incomingPacket, addr = serverSocket.recvfrom(1024)
         message = json.loads(incomingPacket.decode("utf-8"))
-
-        # CREATE NEW THREAD, AND EVERYTHING FROM HERE IS IN IT.
+        # Once there is a request, create a new thread to handle it.
         try:
             days, rooms, times, reservations = readDataFiles()
             threadList.append(serverThread(days, rooms, times, reservations, message, addr, threadLock))
@@ -179,9 +181,7 @@ def main():
             print(e)
         for thread in threadList:
             if not thread.is_alive():
+                # Remove threads that are no longer being used.
                 threadList.remove(thread)
-        print(threadList)
-    # Once the loop is exited, the server is shutting down, so the reservations made/deleted during this time need to be saved back.
-    print("Goodbye")
 if __name__ == "__main__":
     main()
