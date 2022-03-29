@@ -78,9 +78,6 @@ class heartbeatReceiver(threading.Thread):
                 elif not waitingForOtherVictory:
                     self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
                     electionIsHappening = True
-                    
-                        
-
 
 class serverThread (threading.Thread):
     """A class which handles a server interaction. The state of the server is passed to this class when a request is received.
