@@ -1,4 +1,5 @@
 import json
+from locale import currency
 import sys
 import threading
 from socket import *
@@ -8,21 +9,24 @@ import time
 from typing import List
 
 class heartbeatSender(threading.Thread):
-    def __init__(self, myAddr, myPort, serverID) -> None:
+    def __init__(self, myAddr, myPort, serverID, currentCoord: List) -> None:
         threading.Thread.__init__(self)
         self.heartbeatSocket = socket(AF_INET, SOCK_DGRAM)
         self.heartbeatSocket.settimeout(1)
         self.toServer = (myAddr, int(myPort))
         self.serverID = serverID   
+        self.currentCoord = currentCoord
 
     def run(self):
-        done = False
         heartbeat = {"command": "heartbeat", "commandID": self.serverID}
         heartbeatJSON = json.dumps(heartbeat)
-        while not done:
-            time.sleep(5)
-            print("sent heartbeat")
-            self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
+        while True:
+            if self.currentCoord[0] == self.serverID:
+                time.sleep(5)
+                print("sent heartbeat")
+                self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
+            else:
+                time.sleep(2)
             
 class heartbeatReceiver(threading.Thread):
     def __init__(self, myAddr, myPort, serverID, currentCoord: List) -> None:
@@ -247,15 +251,12 @@ def main():
     print(f"{serverID=}")
     # Main loop to wait for client to send.
     # Start up heartbeats
-    hbSender = heartbeatSender(sys.argv[1], 12234, serverID)
+    heartbeatSender(sys.argv[1], 12234, serverID, currentCoord).start()
     heartbeatReceiver(sys.argv[1], 12234, serverID, currentCoord).start()
 
     i=0
     while True:
         print(currentCoord[0])
-        if not hbSender.is_alive():
-            if currentCoord[0] == serverID:
-                hbSender.start()
         i+=1
         # Wait to receive a command
         incomingPacket, addr = serverSocket.recvfrom(1024)
