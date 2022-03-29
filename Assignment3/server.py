@@ -8,27 +8,75 @@ import time
 from typing import List
 
 class heartbeatSender(threading.Thread):
-    def __init__(self, myAddr, myPort, serverID, currentCoord) -> None:
+    def __init__(self, myAddr, myPort, serverID) -> None:
         threading.Thread.__init__(self)
         self.heartbeatSocket = socket(AF_INET, SOCK_DGRAM)
         self.heartbeatSocket.settimeout(1)
         self.toServer = (myAddr, int(myPort))
         self.serverID = serverID   
-        self.currentCoord = currentCoord
 
     def run(self):
         done = False
-        heartbeat = {"command": "heartbeat", "commandID": self.currentCoord}
+        heartbeat = {"command": "heartbeat", "commandID": self.serverID}
         heartbeatJSON = json.dumps(heartbeat)
         while not done:
             time.sleep(5)
             print("sent heartbeat")
             self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
+            
+class heartbeatReceiver(threading.Thread):
+    def __init__(self, myAddr, myPort, serverID) -> None:
+        threading.Thread.__init__(self)
+
+        # Server socket section
+        self.heartbeatRecevierSocket = socket(AF_INET, SOCK_DGRAM) 
+        self.heartbeatRecevierSocket.bind(("", int(myPort)))
+        # Adding the server to the multicast group
+        group = inet_aton(myAddr)
+        mreq = struct.pack('4sL', group, INADDR_ANY)
+        self.heartbeatRecevierSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
+        self.serverID = serverID   
+        self.responseSocket = socket(AF_INET, SOCK_DGRAM)
+        self.heartbeatRecevierSocket.settimeout(10)
+
+
+    def run(self):
+        Election = {"command": "election", "commandID": self.serverID}
+        electionJSON = json.dumps(Election)
+        electionIsHappening = False
+        waitingForOtherVictory = False
+
+        while True:
             try:
-                reply, addr = self.heartbeatSocket.recvfrom(1024)
-            except Exception as e:
-                done = True
-        print("SHITS FUCKED YO")
+                heartbeat, addr = self.heartbeatRecevierSocket.recvfrom(1024)
+                heartbeatMessage = json.loads(heartbeat.decode("utf-8"))
+                if heartbeatMessage["command"] == "heartbeat":
+                    if heartbeatMessage["commandID"] == self.serverID:
+                        print("received heartbeat")
+                elif heartbeatMessage["command"] == "election":
+                    electionIsHappening = True
+                    if self.serverID < heartbeatMessage["commandID"]:
+                        self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
+                    else:
+                        waitingForOtherVictory = True
+
+                elif heartbeatMessage["command"] == "newCoord":
+                    return heartbeatMessage["commandID"]
+
+            except:
+                
+                if electionIsHappening and not waitingForOtherVictory:
+                    gotElected = {"command": "newCoord", "commandID": self.serverID}
+                    newCoordJSON = json.dumps(gotElected)
+                    self.responseSocket.sendto(newCoordJSON.encode(), addr)
+                    return self.serverID
+                elif not waitingForOtherVictory:
+                    self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
+                    electionIsHappening = True
+                    
+                        
+
+
 class serverThread (threading.Thread):
     """A class which handles a server interaction. The state of the server is passed to this class when a request is received.
     If changes are made, these are written back to the file before the thread the class is running in is done."""
@@ -122,13 +170,6 @@ class serverThread (threading.Thread):
                         success = self.unreserveRoom(self.message['room'], self.message['timeslot'], self.message['day'])
                 case 'quit':
                     success = True
-                case 'heartbeat':
-                    if self.message["commandID"] == self.serverID:
-                        success = True
-                    else:
-                        return
-                case 'electLeader':
-                    success = True
                 case _:
                     print("not recognized command")
                     response = json.dumps({'success': False})
@@ -178,7 +219,7 @@ def main():
     threadList = []
     threadLock = threading.Lock()
     # Argument Validation section
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3:
         print("Please enter a multicast address and port number for the server to bind to.")
         print("Server.py <multicast IP> <port>")
         return
@@ -194,14 +235,18 @@ def main():
     group = inet_aton(sys.argv[1])
     mreq = struct.pack('4sL', group, INADDR_ANY)
     serverSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
-    serverID = random.randint(-10000, 0)
+    if len(sys.argv) == 4:
+        serverID = sys.argv[3]
+    else:
+        serverID = random.randint(-10000, 0)
 
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
-    print(f"current coord = {serverID=}")
+    print(f"{serverID=}")
     # Main loop to wait for client to send.
     # Start up heartbeats
-    heartbeatSender(sys.argv[1], sys.argv[2], serverID, serverID).start()
+    heartbeatSender(sys.argv[1], 12234, serverID).start()
+    heartbeatReceiver(sys.argv[1], 12234, serverID).start()
 
     i=0
     while True:
