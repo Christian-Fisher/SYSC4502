@@ -8,15 +8,17 @@ import time
 from typing import List
 
 class heartbeatSender(threading.Thread):
-    def __init__(self, myAddr, myPort) -> None:
+    def __init__(self, myAddr, myPort, serverID, currentCoord) -> None:
         threading.Thread.__init__(self)
         self.heartbeatSocket = socket(AF_INET, SOCK_DGRAM)
         self.heartbeatSocket.settimeout(1)
-        self.toServer = (myAddr, myPort)
+        self.toServer = (myAddr, int(myPort))
+        self.serverID = serverID   
+        self.currentCoord = currentCoord
 
     def run(self):
         done = False
-        heartbeat = {"command": "heartbeat", "commandID": -1}
+        heartbeat = {"command": "heartbeat", "commandID": self.currentCoord}
         heartbeatJSON = json.dumps(heartbeat)
         while not done:
             time.sleep(5)
@@ -24,14 +26,13 @@ class heartbeatSender(threading.Thread):
             self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
             try:
                 reply, addr = self.heartbeatSocket.recvfrom(1024)
-                print(f"Got response from {addr=}")
-            except:
+            except Exception as e:
                 done = True
         print("SHITS FUCKED YO")
 class serverThread (threading.Thread):
     """A class which handles a server interaction. The state of the server is passed to this class when a request is received.
     If changes are made, these are written back to the file before the thread the class is running in is done."""
-    def __init__(self, days, rooms, times, reservations, message, addr, lock) -> None:
+    def __init__(self, days, rooms, times, reservations, message, addr, lock, currentCoord, serverID) -> None:
         threading.Thread.__init__(self)
         self.days: List = days
         self.rooms: List = rooms
@@ -40,6 +41,8 @@ class serverThread (threading.Thread):
         self.message = message
         self.addr = addr
         self.lock = lock
+        self.currentCoord = currentCoord
+        self.serverID = serverID
     
     def writeReservationsBack(self, reservations):
         """When the program ends, write the reservations back into reservations.txt"""
@@ -120,6 +123,11 @@ class serverThread (threading.Thread):
                 case 'quit':
                     success = True
                 case 'heartbeat':
+                    if self.message["commandID"] == self.serverID:
+                        success = True
+                    else:
+                        return
+                case 'electLeader':
                     success = True
                 case _:
                     print("not recognized command")
@@ -129,7 +137,7 @@ class serverThread (threading.Thread):
             response["data"] = data
             response = json.dumps(response)
             # Simulating processing time with a random wait between 5 and 10 seconds.
-            time.sleep(random.randint(5, 10))
+            # time.sleep(random.randint(5, 10))
             responseSocket.sendto(response.encode("utf-8"), self.addr)
 
 
@@ -186,11 +194,14 @@ def main():
     group = inet_aton(sys.argv[1])
     mreq = struct.pack('4sL', group, INADDR_ANY)
     serverSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
+    serverID = random.randint(-10000, 0)
+
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
+    print(f"current coord = {serverID=}")
     # Main loop to wait for client to send.
     # Start up heartbeats
-    heartbeatSender(sys.argv[1], sys.argv[2]).start()
+    heartbeatSender(sys.argv[1], sys.argv[2], serverID, serverID).start()
 
     i=0
     while True:
@@ -201,7 +212,7 @@ def main():
         # Once there is a request, create a new thread to handle it.
         try:
             days, rooms, times, reservations = readDataFiles()
-            threadList.append(serverThread(days, rooms, times, reservations, message, addr, threadLock))
+            threadList.append(serverThread(days, rooms, times, reservations, message, addr, threadLock, serverID, serverID))
             threadList[-1].start()
         except Exception as e:
             print(e)
