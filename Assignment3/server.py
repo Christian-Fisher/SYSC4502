@@ -9,6 +9,7 @@ from typing import List
 
 class heartbeatSender(threading.Thread):
     def __init__(self, myAddr, myPort) -> None:
+        threading.Thread.__init__(self)
         self.heartbeatSocket = socket(AF_INET, SOCK_DGRAM)
         self.heartbeatSocket.settimeout(1)
         self.toServer = (myAddr, myPort)
