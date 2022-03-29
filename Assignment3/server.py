@@ -56,6 +56,7 @@ class heartbeatReceiver(threading.Thread):
                 if heartbeatMessage["command"] == "heartbeat":
                         print("received heartbeat")
                 elif heartbeatMessage["command"] == "election":
+                    print("Got election notification")
                     electionIsHappening = True
                     if self.serverID < heartbeatMessage["commandID"]:
                         self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
@@ -65,6 +66,8 @@ class heartbeatReceiver(threading.Thread):
                 elif heartbeatMessage["command"] == "newCoord":
                     print(f"changing currentcord to {heartbeatMessage['commandID']=}")
                     self.currentCoord[0] = heartbeatMessage["commandID"]
+                    waitingForOtherVictory = False
+                    electionIsHappening = False
 
             except:
                 
@@ -74,6 +77,9 @@ class heartbeatReceiver(threading.Thread):
                     self.responseSocket.sendto(newCoordJSON.encode(), addr)
                     print(f"changing currentcord to {self.serverID=}")
                     self.currentCoord[0] = self.serverID
+                    waitingForOtherVictory = False
+                    electionIsHappening = False
+                
                 elif not waitingForOtherVictory:
                     self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
                     electionIsHappening = True
