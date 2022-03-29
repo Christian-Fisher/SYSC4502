@@ -244,7 +244,7 @@ def main():
     mreq = struct.pack('4sL', group, INADDR_ANY)
     serverSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     if len(sys.argv) == 4:
-        serverID = sys.argv[3]
+        serverID = int(sys.argv[3])
     else:
         serverID = random.randint(-10000, 0)
     currentCoord = [0]
