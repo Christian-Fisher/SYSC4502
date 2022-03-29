@@ -189,7 +189,8 @@ def main():
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     # Main loop to wait for client to send.
     # Start up heartbeats
-    heartbeatSender(sys.argv[1], sys.argv[2])
+    heartbeatSender(sys.argv[1], sys.argv[2]).start()
+
     i=0
     while True:
         i+=1
