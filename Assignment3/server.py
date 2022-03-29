@@ -41,7 +41,7 @@ class heartbeatReceiver(threading.Thread):
         self.heartbeatRecevierSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
         self.serverID = serverID   
         self.responseSocket = socket(AF_INET, SOCK_DGRAM)
-        self.heartbeatRecevierSocket.settimeout(10)
+        self.heartbeatRecevierSocket.settimeout(5)
         self.currentCoord = currentCoord
         self.toServerGroup = (myAddr, int(myPort))
 
