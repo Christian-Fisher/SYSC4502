@@ -1,5 +1,4 @@
 import json
-from locale import currency
 import sys
 import threading
 from socket import *
@@ -64,7 +63,7 @@ class heartbeatReceiver(threading.Thread):
                         waitingForOtherVictory = True
 
                 elif heartbeatMessage["command"] == "newCoord":
-                    print("changing currentcord")
+                    print(f"changing currentcord to {heartbeatMessage['commandID']=}")
                     self.currentCoord[0] = heartbeatMessage["commandID"]
 
             except:
@@ -73,7 +72,7 @@ class heartbeatReceiver(threading.Thread):
                     gotElected = {"command": "newCoord", "commandID": self.serverID}
                     newCoordJSON = json.dumps(gotElected)
                     self.responseSocket.sendto(newCoordJSON.encode(), addr)
-                    print("changing currentcord")
+                    print(f"changing currentcord to {self.serverID=}")
                     self.currentCoord[0] = self.serverID
                 elif not waitingForOtherVictory:
                     self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
