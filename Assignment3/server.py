@@ -19,9 +19,11 @@ class heartbeatSender(threading.Thread):
         heartbeatJSON = json.dumps(heartbeat)
         while not done:
             time.sleep(5)
+            print("sent heartbeat")
             self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
             try:
                 reply, addr = self.heartbeatSocket.recvfrom(1024)
+                print(f"Got response from {addr=}")
             except:
                 done = True
         print("SHITS FUCKED YO")
