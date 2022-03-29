@@ -249,7 +249,10 @@ def main():
     else:
         serverID = random.randint(-10000, 0)
     currentCoord = [0]
-    currentCoord[0] = serverID
+    if serverID != -5:
+        currentCoord[0] = -5
+    else:
+        currentCoord[0] = serverID
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     print(f"{serverID=}")
