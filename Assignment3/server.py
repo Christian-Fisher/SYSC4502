@@ -25,7 +25,7 @@ class heartbeatSender(threading.Thread):
             self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
             
 class heartbeatReceiver(threading.Thread):
-    def __init__(self, myAddr, myPort, serverID) -> None:
+    def __init__(self, myAddr, myPort, serverID, currentCoord: List) -> None:
         threading.Thread.__init__(self)
 
         # Server socket section
@@ -38,7 +38,7 @@ class heartbeatReceiver(threading.Thread):
         self.serverID = serverID   
         self.responseSocket = socket(AF_INET, SOCK_DGRAM)
         self.heartbeatRecevierSocket.settimeout(10)
-
+        self.currentCoord = currentCoord
 
     def run(self):
         Election = {"command": "election", "commandID": self.serverID}
@@ -51,7 +51,6 @@ class heartbeatReceiver(threading.Thread):
                 heartbeat, addr = self.heartbeatRecevierSocket.recvfrom(1024)
                 heartbeatMessage = json.loads(heartbeat.decode("utf-8"))
                 if heartbeatMessage["command"] == "heartbeat":
-                    if heartbeatMessage["commandID"] == self.serverID:
                         print("received heartbeat")
                 elif heartbeatMessage["command"] == "election":
                     electionIsHappening = True
@@ -61,7 +60,8 @@ class heartbeatReceiver(threading.Thread):
                         waitingForOtherVictory = True
 
                 elif heartbeatMessage["command"] == "newCoord":
-                    return heartbeatMessage["commandID"]
+                    print("changing currentcord")
+                    self.currentCoord[0] = heartbeatMessage["commandID"]
 
             except:
                 
@@ -69,7 +69,8 @@ class heartbeatReceiver(threading.Thread):
                     gotElected = {"command": "newCoord", "commandID": self.serverID}
                     newCoordJSON = json.dumps(gotElected)
                     self.responseSocket.sendto(newCoordJSON.encode(), addr)
-                    return self.serverID
+                    print("changing currentcord")
+                    self.currentCoord[0] = self.serverID
                 elif not waitingForOtherVictory:
                     self.responseSocket.sendto(electionJSON.encode("utf-8"), addr)
                     electionIsHappening = True
@@ -239,17 +240,22 @@ def main():
         serverID = sys.argv[3]
     else:
         serverID = random.randint(-10000, 0)
-
+    currentCoord = [0]
+    currentCoord[0] = serverID
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     print(f"{serverID=}")
     # Main loop to wait for client to send.
     # Start up heartbeats
-    heartbeatSender(sys.argv[1], 12234, serverID).start()
-    heartbeatReceiver(sys.argv[1], 12234, serverID).start()
+    hbSender = heartbeatSender(sys.argv[1], 12234, serverID)
+    heartbeatReceiver(sys.argv[1], 12234, serverID, currentCoord).start()
 
     i=0
     while True:
+        print(currentCoord[0])
+        if not hbSender.is_alive():
+            if currentCoord[0] == serverID:
+                hbSender.start()
         i+=1
         # Wait to receive a command
         incomingPacket, addr = serverSocket.recvfrom(1024)
