@@ -252,14 +252,14 @@ def main():
     if serverID != -5:
         currentCoord[0] = -5
     else:
-        currentCoord[0] = serverID
+        currentCoord[0] = int(serverID)
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     print(f"{serverID=}")
     # Main loop to wait for client to send.
     # Start up heartbeats
-    heartbeatSender(sys.argv[1], 12234, serverID, currentCoord).start()
-    heartbeatReceiver(sys.argv[1], 12234, serverID, currentCoord).start()
+    heartbeatSender(sys.argv[1], 12234, int(serverID), currentCoord).start()
+    heartbeatReceiver(sys.argv[1], 12234, int(serverID), currentCoord).start()
 
     i=0
     while True:
