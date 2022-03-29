@@ -6,6 +6,7 @@ import struct
 import random
 import time
 from typing import List
+import math
 
 class heartbeatSender(threading.Thread):
     def __init__(self, myAddr, myPort, serverID, currentCoord: List) -> None:
@@ -57,22 +58,20 @@ class heartbeatReceiver(threading.Thread):
                 heartbeatMessage = json.loads(heartbeat.decode("utf-8"))
                 if heartbeatMessage["command"] == "heartbeat":
                         print("received heartbeat")
-                elif heartbeatMessage["command"] == "election":
-                    print("Got election notification")
+                elif heartbeatMessage["command"] == "election" and heartbeatMessage["commandID"] != self.serverID:
                     electionIsHappening = True
                     if self.serverID < heartbeatMessage["commandID"]:
                         self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup )
                     else:
                         waitingForOtherVictory = True
 
-                elif heartbeatMessage["command"] == "newCoord":
+                elif heartbeatMessage["command"] == "newCoord" and heartbeatMessage["commandID"] != self.serverID:
                     print(f"changing currentcord to {heartbeatMessage['commandID']=}")
                     self.currentCoord[0] = heartbeatMessage["commandID"]
                     waitingForOtherVictory = False
                     electionIsHappening = False
 
             except Exception as s:
-                print(s)
                 if electionIsHappening and not waitingForOtherVictory:
                     gotElected = {"command": "newCoord", "commandID": self.serverID}
                     newCoordJSON = json.dumps(gotElected)
@@ -86,6 +85,7 @@ class heartbeatReceiver(threading.Thread):
                     self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup)
                     electionIsHappening = True
 
+            time.sleep(random.random())
 class serverThread (threading.Thread):
     """A class which handles a server interaction. The state of the server is passed to this class when a request is received.
     If changes are made, these are written back to the file before the thread the class is running in is done."""
