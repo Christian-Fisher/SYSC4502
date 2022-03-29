@@ -22,11 +22,11 @@ class heartbeatSender(threading.Thread):
         heartbeatJSON = json.dumps(heartbeat)
         while True:
             if self.currentCoord[0] == self.serverID:
-                time.sleep(5)
+                time.sleep(2)
                 print("sent heartbeat")
                 self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServerGroup)
             else:
-                time.sleep(2)
+                time.sleep(1)
             
 class heartbeatReceiver(threading.Thread):
     def __init__(self, myAddr, myPort, serverID, currentCoord: List) -> None:
@@ -187,10 +187,9 @@ class serverThread (threading.Thread):
             response["data"] = data
             response = json.dumps(response)
             # Simulating processing time with a random wait between 5 and 10 seconds.
-            # time.sleep(random.randint(5, 10))
-            responseSocket.sendto(response.encode("utf-8"), self.addr)
-
-
+            time.sleep(random.randint(5, 10))
+            if self.currentCoord == self.serverID:
+                responseSocket.sendto(response.encode("utf-8"), self.addr)
         else:
             print("Packet is invalid.")
 
@@ -263,7 +262,6 @@ def main():
 
     i=0
     while True:
-        print(currentCoord[0])
         i+=1
         # Wait to receive a command
         incomingPacket, addr = serverSocket.recvfrom(1024)
@@ -271,7 +269,7 @@ def main():
         # Once there is a request, create a new thread to handle it.
         try:
             days, rooms, times, reservations = readDataFiles()
-            threadList.append(serverThread(days, rooms, times, reservations, message, addr, threadLock, serverID, serverID))
+            threadList.append(serverThread(days, rooms, times, reservations, message, addr, threadLock, serverID, currentCoord[0]))
             threadList[-1].start()
         except Exception as e:
             print(e)
