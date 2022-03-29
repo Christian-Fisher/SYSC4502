@@ -52,6 +52,10 @@ class heartbeatReceiver(threading.Thread):
         electionIsHappening = False
         waitingForOtherVictory = False
 
+        if self.currentCoord[0] == 0:
+            self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup)
+            electionIsHappening = True
+
         while True:
             try:
                 heartbeat = self.heartbeatRecevierSocket.recv(1024)
@@ -248,10 +252,6 @@ def main():
     else:
         serverID = random.randint(-10000, 0)
     currentCoord = [0]
-    if serverID != -5:
-        currentCoord[0] = -5
-    else:
-        currentCoord[0] = int(serverID)
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     print(f"{serverID=}")
