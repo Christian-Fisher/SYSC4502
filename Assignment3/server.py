@@ -7,6 +7,24 @@ import random
 import time
 from typing import List
 
+class heartbeatSender(threading.Thread):
+    def __init__(self, myAddr, myPort) -> None:
+        self.heartbeatSocket = socket(AF_INET, SOCK_DGRAM)
+        self.heartbeatSocket.settimeout(1)
+        self.toServer = (myAddr, myPort)
+
+    def run(self):
+        done = False
+        heartbeat = {"command": "heartbeat", "commandID": -1}
+        heartbeatJSON = json.dumps(heartbeat)
+        while not done:
+            time.sleep(5)
+            self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServer)
+            try:
+                reply, addr = self.heartbeatSocket.recvfrom(1024)
+            except:
+                done = True
+        print("SHITS FUCKED YO")
 class serverThread (threading.Thread):
     """A class which handles a server interaction. The state of the server is passed to this class when a request is received.
     If changes are made, these are written back to the file before the thread the class is running in is done."""
@@ -97,6 +115,8 @@ class serverThread (threading.Thread):
                     if 'room' in self.message and 'timeslot' in self.message and 'day' in self.message:
                         success = self.unreserveRoom(self.message['room'], self.message['timeslot'], self.message['day'])
                 case 'quit':
+                    success = True
+                case 'heartbeat':
                     success = True
                 case _:
                     print("not recognized command")
