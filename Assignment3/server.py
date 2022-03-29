@@ -53,7 +53,7 @@ class heartbeatReceiver(threading.Thread):
 
         while True:
             try:
-                heartbeat, addr = self.heartbeatRecevierSocket.recv(1024)
+                heartbeat = self.heartbeatRecevierSocket.recv(1024)
                 heartbeatMessage = json.loads(heartbeat.decode("utf-8"))
                 if heartbeatMessage["command"] == "heartbeat":
                         print("received heartbeat")
@@ -71,8 +71,8 @@ class heartbeatReceiver(threading.Thread):
                     waitingForOtherVictory = False
                     electionIsHappening = False
 
-            except:
-                
+            except Exception as s:
+                print(s)
                 if electionIsHappening and not waitingForOtherVictory:
                     gotElected = {"command": "newCoord", "commandID": self.serverID}
                     newCoordJSON = json.dumps(gotElected)
