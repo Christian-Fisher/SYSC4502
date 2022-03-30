@@ -6,7 +6,6 @@ import struct
 import random
 import time
 from typing import List
-import math
 
 class heartbeatSender(threading.Thread):
     def __init__(self, myAddr, myPort, serverID, currentCoord: List) -> None:
@@ -20,10 +19,10 @@ class heartbeatSender(threading.Thread):
     def run(self):
         heartbeat = {"command": "heartbeat", "commandID": self.serverID}
         heartbeatJSON = json.dumps(heartbeat)
+        # Only sends a heartbeat if the current server is the leader. Else do nothing
         while True:
             if self.currentCoord[0] == self.serverID and self.currentCoord[0] != 0:
                 time.sleep(2)
-                print("sent heartbeat")
                 self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServerGroup)
             else:
                 time.sleep(1)
@@ -51,7 +50,7 @@ class heartbeatReceiver(threading.Thread):
         electionJSON = json.dumps(Election)
         electionIsHappening = False
         waitingForOtherVictory = False
-
+        # If this server just started up, call for an election
         if self.currentCoord[0] == 0:
             self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup)
             self.currentCoord[0] = 0
@@ -60,12 +59,16 @@ class heartbeatReceiver(threading.Thread):
 
         while True:
             try:
+                # Receive messages
                 heartbeat = self.heartbeatRecevierSocket.recv(1024)
                 heartbeatMessage = json.loads(heartbeat.decode("utf-8"))
+                # If its a heartbeat ignore it and continue
                 if heartbeatMessage["command"] == "heartbeat":
-                        print("received heartbeat")
+                        pass
+                # If its a heartbeat but we are in an election, ignore it as well
                 elif heartbeatMessage["command"] == "heartbeat" and waitingForOtherVictory:
                     raise Exception("We are the coordinator now")
+                # If the message is an election message, not from itself, send back an election message if this server should be the leader
                 elif heartbeatMessage["command"] == "election" and heartbeatMessage["commandID"] != self.serverID:
                     print(f"Server {heartbeatMessage['commandID']} called an election")
                     electionIsHappening = True
@@ -74,14 +77,16 @@ class heartbeatReceiver(threading.Thread):
                         self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup )
                     else:
                         waitingForOtherVictory = True
-
+                # If a server wins, send a victory message to all servers
                 elif heartbeatMessage["command"] == "newCoord" and heartbeatMessage["commandID"] != self.serverID:
                     self.currentCoord[0] = heartbeatMessage["commandID"]
+                    # Swap leaders to this leader
                     print(f"Leader is now {self.currentCoord[0]}") 
                     waitingForOtherVictory = False
                     electionIsHappening = False
 
             except Exception as s:
+                # This server won, and it should send a message to all other servers telling them it won
                 if electionIsHappening and not waitingForOtherVictory:
                     gotElected = {"command": "newCoord", "commandID": self.serverID}
                     newCoordJSON = json.dumps(gotElected)
@@ -90,7 +95,7 @@ class heartbeatReceiver(threading.Thread):
                     print(f"Leader is now {self.currentCoord[0]}")
                     waitingForOtherVictory = False
                     electionIsHappening = False
-                
+                # Send a election message since the heartbeat stopped.
                 elif not waitingForOtherVictory:
                     self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup)
                     electionIsHappening = True
@@ -253,6 +258,7 @@ def main():
     group = inet_aton(sys.argv[1])
     mreq = struct.pack('4sL', group, INADDR_ANY)
     serverSocket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
+    # Start the server with a random or preset ID
     if len(sys.argv) == 4:
         serverID = int(sys.argv[3])
     else:
@@ -261,11 +267,11 @@ def main():
     # Reading data files section
     print(f"Server connected to address {sys.argv[1]} on port {sys.argv[2]}.")
     print(f"{serverID=}")
-    # Main loop to wait for client to send.
     # Start up heartbeats
     heartbeatSender(sys.argv[1], 12234, int(serverID), currentCoord).start()
     heartbeatReceiver(sys.argv[1], 12234, int(serverID), currentCoord).start()
-
+    
+    # Main loop to wait for client to send.
     i=0
     while True:
         i+=1
