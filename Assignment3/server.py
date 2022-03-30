@@ -21,7 +21,7 @@ class heartbeatSender(threading.Thread):
         heartbeat = {"command": "heartbeat", "commandID": self.serverID}
         heartbeatJSON = json.dumps(heartbeat)
         while True:
-            if self.currentCoord[0] == self.serverID:
+            if self.currentCoord[0] == self.serverID and self.currentCoord[0] != 0:
                 time.sleep(2)
                 print("sent heartbeat")
                 self.heartbeatSocket.sendto(heartbeatJSON.encode(), self.toServerGroup)
@@ -54,6 +54,7 @@ class heartbeatReceiver(threading.Thread):
 
         if self.currentCoord[0] == 0:
             self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup)
+            self.currentCoord[0] = 0
             electionIsHappening = True
 
         while True:
@@ -67,6 +68,7 @@ class heartbeatReceiver(threading.Thread):
                 elif heartbeatMessage["command"] == "election" and heartbeatMessage["commandID"] != self.serverID:
                     print(f"received election request from {heartbeatMessage['commandID']} and {self.serverID=} ")
                     electionIsHappening = True
+                    self.currentCoord[0] = 0
                     if self.serverID < heartbeatMessage["commandID"]:
                         self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup )
                         print("sending my own election back")
