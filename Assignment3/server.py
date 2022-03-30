@@ -63,7 +63,7 @@ class heartbeatReceiver(threading.Thread):
                 if heartbeatMessage["command"] == "heartbeat":
                         print("received heartbeat")
                 elif heartbeatMessage["command"] == "election" and heartbeatMessage["commandID"] != self.serverID:
-                    print("received election request")
+                    print(f"received election request from {heartbeatMessage['commandID']} and {self.serverID=} ")
                     electionIsHappening = True
                     if self.serverID < heartbeatMessage["commandID"]:
                         self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup )
