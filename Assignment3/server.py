@@ -62,12 +62,16 @@ class heartbeatReceiver(threading.Thread):
                 heartbeatMessage = json.loads(heartbeat.decode("utf-8"))
                 if heartbeatMessage["command"] == "heartbeat":
                         print("received heartbeat")
+                elif heartbeatMessage["command"] == "heartbeat" and electionIsHappening:
+                    raise Exception("We are the coordinator now")
                 elif heartbeatMessage["command"] == "election" and heartbeatMessage["commandID"] != self.serverID:
                     print(f"received election request from {heartbeatMessage['commandID']} and {self.serverID=} ")
                     electionIsHappening = True
                     if self.serverID < heartbeatMessage["commandID"]:
                         self.responseSocket.sendto(electionJSON.encode("utf-8"), self.toServerGroup )
+                        print("sending my own election back")
                     else:
+                        print("Someone else should be coord, so waiting for victory")
                         waitingForOtherVictory = True
 
                 elif heartbeatMessage["command"] == "newCoord" and heartbeatMessage["commandID"] != self.serverID:
