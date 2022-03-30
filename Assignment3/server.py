@@ -67,6 +67,7 @@ class heartbeatReceiver(threading.Thread):
                 elif heartbeatMessage["command"] == "heartbeat" and waitingForOtherVictory:
                     raise Exception("We are the coordinator now")
                 elif heartbeatMessage["command"] == "election" and heartbeatMessage["commandID"] != self.serverID:
+                    print(f"Server {heartbeatMessage["commandID"]} called an election")
                     electionIsHappening = True
                     self.currentCoord[0] = 0
                     if self.serverID < heartbeatMessage["commandID"]:
